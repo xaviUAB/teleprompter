@@ -30,7 +30,7 @@
             line-height: 1.4;
             text-align: center;
             white-space: pre-wrap;
-            transition: transform 0.1s linear;
+            transition: transform 0.1s linear, font-size 0.2s ease;
         }
 
         /* Indicador central de lectura */
@@ -89,6 +89,7 @@
             font-family: monospace;
             pointer-events: none;
             z-index: 50;
+            font-size: 0.875rem;
         }
 
         .hidden { display: none !important; }
@@ -118,7 +119,9 @@
 
     <!-- Indicador de velocitat i estat -->
     <div id="status" class="status-overlay">
-        Velocitat: <span id="speed-val">2</span> | <span id="pause-status">Pausat</span>
+        Velocitat: <span id="speed-val">2</span> | 
+        Lletra: <span id="font-val">5.0</span>rem | 
+        <span id="pause-status">Pausat</span>
     </div>
 
     <!-- Guia de lectura -->
@@ -150,16 +153,20 @@
 
             <div class="mt-6 p-4 bg-black/50 rounded text-sm text-gray-300">
                 <p><strong>Controls de teclat:</strong></p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
                     <ul class="list-disc ml-5">
                         <li><strong>Espai:</strong> Pausa / Continua</li>
-                        <li><strong>Fletxa Amunt:</strong> Augmenta velocitat</li>
-                        <li><strong>Fletxa Avall:</strong> Disminueix velocitat</li>
+                        <li><strong>Fletxa Amunt:</strong> + Velocitat</li>
+                        <li><strong>Fletxa Avall:</strong> - Velocitat</li>
                     </ul>
                     <ul class="list-disc ml-5">
                         <li><strong>Fletxa Dreta:</strong> Avança text</li>
-                        <li><strong>Fletxa Esquerra:</strong> Retrocedeix text</li>
+                        <li><strong>Fletxa Esquerra:</strong> Retrocedeix</li>
                         <li><strong>Esc:</strong> Menú de configuració</li>
+                    </ul>
+                    <ul class="list-disc ml-5">
+                        <li><strong>Tecla Q:</strong> + Mida lletra</li>
+                        <li><strong>Tecla A:</strong> - Mida lletra</li>
                     </ul>
                 </div>
             </div>
@@ -177,13 +184,15 @@
         const textInput = document.getElementById('text-input');
         const fileUpload = document.getElementById('file-upload');
         const speedValDisplay = document.getElementById('speed-val');
+        const fontValDisplay = document.getElementById('font-val');
         const pauseStatusDisplay = document.getElementById('pause-status');
 
         let speed = 2; // Píxels per frame
+        let fontSize = 5.0; // En rem
         let isPaused = true;
         let scrollY = 0;
         let animationId = null;
-        const jumpStep = 300; // Quantitat de píxels que salta el text en avançar/retrocedir
+        const jumpStep = 300; // Píxels de salt
 
         // Gestió de la càrrega de fitxers
         fileUpload.addEventListener('change', function(e) {
@@ -215,6 +224,7 @@
             scrollContent.innerText = text;
             scrollY = 0;
             updateTransform();
+            updateFontSize();
             isPaused = false;
             toggleModal();
             
@@ -227,12 +237,16 @@
             scrollContent.style.transform = `translateY(${scrollY}px)`;
         }
 
+        function updateFontSize() {
+            scrollContent.style.fontSize = `${fontSize}rem`;
+            fontValDisplay.innerText = fontSize.toFixed(1);
+        }
+
         function animate() {
             if (!isPaused) {
                 scrollY -= speed;
                 updateTransform();
 
-                // Gestió del bucle de text (opcional, si es vol que torni a començar)
                 const containerHeight = scrollContent.offsetHeight;
                 if (Math.abs(scrollY) > containerHeight + window.innerHeight) {
                     scrollY = window.innerHeight / 2;
@@ -243,6 +257,7 @@
 
         function updateStatusUI() {
             speedValDisplay.innerText = speed.toFixed(1);
+            fontValDisplay.innerText = fontSize.toFixed(1);
             pauseStatusDisplay.innerText = isPaused ? "Pausat" : "En marxa";
             pauseStatusDisplay.className = isPaused ? "text-red-400" : "text-green-400";
         }
@@ -255,33 +270,47 @@
                 return;
             }
 
-            switch(e.key) {
+            const key = e.key.toLowerCase();
+
+            switch(key) {
                 case " ": // Espai per pausar
                     e.preventDefault();
                     isPaused = !isPaused;
                     break;
-                case "ArrowUp": // Augmentar velocitat
+                case "arrowup": // Augmentar velocitat
                     e.preventDefault();
                     speed += 0.5;
                     if (speed > 25) speed = 25;
                     break;
-                case "ArrowDown": // Reduir velocitat
+                case "arrowdown": // Reduir velocitat
                     e.preventDefault();
                     speed -= 0.5;
                     if (speed < 0.5) speed = 0.5;
                     break;
-                case "ArrowRight": // Avançar text
+                case "arrowright": // Avançar text
                     e.preventDefault();
                     scrollY -= jumpStep;
                     updateTransform();
                     break;
-                case "ArrowLeft": // Retrocedir text
+                case "arrowleft": // Retrocedir text
                     e.preventDefault();
                     scrollY += jumpStep;
-                    if (scrollY > 0) scrollY = 0; // No retrocedir més enllà de l'inici
+                    if (scrollY > 0) scrollY = 0;
                     updateTransform();
                     break;
-                case "Escape": // Tornar al menú
+                case "q": // Augmentar mida lletra
+                    e.preventDefault();
+                    fontSize += 0.2;
+                    if (fontSize > 15) fontSize = 15;
+                    updateFontSize();
+                    break;
+                case "a": // Disminuir mida lletra
+                    e.preventDefault();
+                    fontSize -= 0.2;
+                    if (fontSize < 1) fontSize = 1;
+                    updateFontSize();
+                    break;
+                case "escape": // Tornar al menú
                     toggleModal();
                     break;
             }
