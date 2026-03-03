@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teleprompter Professional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+        }
+
+        #prompter-container {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            position: relative;
+        }
+
+        #scroll-content {
+            padding: 40vh 10vw;
+            font-size: 5rem;
+            line-height: 1.4;
+            text-align: center;
+            white-space: pre-wrap;
+            transition: transform 0.1s linear;
+        }
+
+        /* Indicador central de lectura */
+        #reading-guide {
+            position: fixed;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #reading-guide::before, #reading-guide::after {
+            content: '►';
+            position: absolute;
+            color: #ffde00;
+            font-size: 2rem;
+            top: -1rem;
+        }
+
+        #reading-guide::before { left: 10px; }
+        #reading-guide::after { right: 10px; transform: rotate(180deg); }
+
+        /* Estils de la finestra modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 800px;
+            width: 90%;
+            border: 1px solid #333;
+        }
+
+        .status-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .hidden { display: none !important; }
+
+        textarea {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            width: 100%;
+            height: 300px;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            resize: none;
+            font-size: 1rem;
+        }
+
+        button {
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Indicador de velocitat i estat -->
+    <div id="status" class="status-overlay">
+        Velocitat: <span id="speed-val">2</span> | <span id="pause-status">Pausat</span>
+    </div>
+
+    <!-- Guia de lectura -->
+    <div id="reading-guide"></div>
+
+    <!-- Contenidor del Teleprompter -->
+    <div id="prompter-container">
+        <div id="scroll-content">Benvingudes i benvinguts al vostre teleprompter. Premeu el botó de configuració per començar o carregar el vostre text.</div>
+    </div>
+
+    <!-- Modal de Configuració -->
+    <div id="config-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h1 class="text-2xl font-bold mb-4">Configuració del Teleprompter</h1>
+            
+            <p class="mb-2 text-gray-400">Escriviu el text o pugeu un fitxer:</p>
+            <textarea id="text-input" placeholder="Introduïu aquí el guió..."></textarea>
+            
+            <div class="mt-4 flex flex-wrap gap-4 items-center">
+                <label class="bg-blue-600 px-4 py-2 rounded cursor-pointer hover:bg-blue-700">
+                    Pujar fitxer .txt
+                    <input type="file" id="file-upload" accept=".txt" class="hidden">
+                </label>
+                
+                <button onclick="startPrompter()" class="bg-green-600 px-6 py-2 rounded font-bold hover:bg-green-700 ml-auto">
+                    Inicia el teleprompter
+                </button>
+            </div>
+
+            <div class="mt-6 p-4 bg-black/50 rounded text-sm text-gray-300">
+                <p><strong>Controls de teclat:</strong></p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                    <ul class="list-disc ml-5">
+                        <li><strong>Espai:</strong> Pausa / Continua</li>
+                        <li><strong>Fletxa Amunt:</strong> Augmenta velocitat</li>
+                        <li><strong>Fletxa Avall:</strong> Disminueix velocitat</li>
+                    </ul>
+                    <ul class="list-disc ml-5">
+                        <li><strong>Fletxa Dreta:</strong> Avança text</li>
+                        <li><strong>Fletxa Esquerra:</strong> Retrocedeix text</li>
+                        <li><strong>Esc:</strong> Menú de configuració</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botó flotant per tornar a configurar -->
+    <button onclick="toggleModal()" class="fixed top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full z-20" title="Configuració">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+
+    <script>
+        const scrollContent = document.getElementById('scroll-content');
+        const configModal = document.getElementById('config-modal');
+        const textInput = document.getElementById('text-input');
+        const fileUpload = document.getElementById('file-upload');
+        const speedValDisplay = document.getElementById('speed-val');
+        const pauseStatusDisplay = document.getElementById('pause-status');
+
+        let speed = 2; // Píxels per frame
+        let isPaused = true;
+        let scrollY = 0;
+        let animationId = null;
+        const jumpStep = 300; // Quantitat de píxels que salta el text en avançar/retrocedir
+
+        // Gestió de la càrrega de fitxers
+        fileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                textInput.value = e.target.result;
+            };
+            reader.readAsText(file);
+        });
+
+        function toggleModal() {
+            configModal.classList.toggle('hidden');
+            if (!configModal.classList.contains('hidden')) {
+                isPaused = true;
+                updateStatusUI();
+            }
+        }
+
+        function startPrompter() {
+            const text = textInput.value.trim();
+            if (text === "") {
+                alert("Si us plau, introduïu algun text.");
+                return;
+            }
+            
+            scrollContent.innerText = text;
+            scrollY = 0;
+            updateTransform();
+            isPaused = false;
+            toggleModal();
+            
+            if (!animationId) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        function updateTransform() {
+            scrollContent.style.transform = `translateY(${scrollY}px)`;
+        }
+
+        function animate() {
+            if (!isPaused) {
+                scrollY -= speed;
+                updateTransform();
+
+                // Gestió del bucle de text (opcional, si es vol que torni a començar)
+                const containerHeight = scrollContent.offsetHeight;
+                if (Math.abs(scrollY) > containerHeight + window.innerHeight) {
+                    scrollY = window.innerHeight / 2;
+                }
+            }
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function updateStatusUI() {
+            speedValDisplay.innerText = speed.toFixed(1);
+            pauseStatusDisplay.innerText = isPaused ? "Pausat" : "En marxa";
+            pauseStatusDisplay.className = isPaused ? "text-red-400" : "text-green-400";
+        }
+
+        // Control de teclat
+        window.addEventListener('keydown', (e) => {
+            // Ignorar si s'està escrivint al textarea
+            if (document.activeElement === textInput) {
+                if (e.key === "Escape") textInput.blur();
+                return;
+            }
+
+            switch(e.key) {
+                case " ": // Espai per pausar
+                    e.preventDefault();
+                    isPaused = !isPaused;
+                    break;
+                case "ArrowUp": // Augmentar velocitat
+                    e.preventDefault();
+                    speed += 0.5;
+                    if (speed > 25) speed = 25;
+                    break;
+                case "ArrowDown": // Reduir velocitat
+                    e.preventDefault();
+                    speed -= 0.5;
+                    if (speed < 0.5) speed = 0.5;
+                    break;
+                case "ArrowRight": // Avançar text
+                    e.preventDefault();
+                    scrollY -= jumpStep;
+                    updateTransform();
+                    break;
+                case "ArrowLeft": // Retrocedir text
+                    e.preventDefault();
+                    scrollY += jumpStep;
+                    if (scrollY > 0) scrollY = 0; // No retrocedir més enllà de l'inici
+                    updateTransform();
+                    break;
+                case "Escape": // Tornar al menú
+                    toggleModal();
+                    break;
+            }
+            updateStatusUI();
+        });
+
+        // Inicialitzar estat visual
+        updateStatusUI();
+    </script>
+</body>
+</html>
