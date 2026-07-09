@@ -121,18 +121,23 @@
             font-size: 1rem;
         }
 
-        button {
-            transition: all 0.2s;
+        button { transition: all 0.2s; }
+        button:hover { opacity: 0.8; }
+        
+        .color-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
         }
-
-        button:hover {
-            opacity: 0.8;
-        }
+        .color-btn.active { border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.8); }
+        
+        .bookmark { transition: color 0.3s ease; }
     </style>
 </head>
 <body>
 
-    <!-- Barra de progrés -->
     <div class="fixed top-0 left-0 w-full h-1 z-50 bg-gray-900">
         <div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-75"></div>
     </div>
@@ -147,12 +152,10 @@
     </div>
     <div id="reading-guide"></div>
 
-    <!-- Contenidor principal -->
     <div id="prompter-container">
         <div id="scroll-content">Us donem la benvinguda al vostre teleprompter. Premeu el botó de configuració per començar o carregar el vostre text.</div>
     </div>
 
-    <!-- Controls Ràpids Autocultables -->
     <div id="quick-controls" class="auto-hide-ui fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900/80 backdrop-blur border border-gray-700 px-6 py-3 rounded-full flex gap-4 items-center z-50 transition-opacity duration-300">
         <button onclick="changeFontSize(-0.2)" class="text-gray-300 hover:text-white font-bold" title="Redueix la lletra">A-</button>
         <button onclick="changeFontSize(0.2)" class="text-gray-300 hover:text-white font-bold" title="Augmenta la lletra">A+</button>
@@ -167,12 +170,14 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 19l7-7-7-7M4 19l7-7-7-7"/></svg>
         </button>
         <div class="w-px h-6 bg-gray-700 mx-2"></div>
+        <button onclick="toggleBookmarksModal()" class="text-gray-300 hover:text-white" title="Marcadors de secció">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
         <button onclick="toggleFullscreen()" class="text-gray-300 hover:text-white" title="Pantalla completa">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
     </div>
 
-    <!-- Botons superiors auxiliars -->
     <button onclick="toggleInfo()" class="auto-hide-ui fixed top-4 left-4 bg-white/10 hover:bg-white/20 p-2 rounded-full z-20 transition-opacity duration-300" title="Informació">
         <span class="font-bold">i</span>
     </button>
@@ -188,7 +193,6 @@
         </svg>
     </button>
 
-    <!-- Modal Configuració -->
     <div id="config-modal" class="modal-overlay">
         <div class="modal-content">
             <h1 class="text-2xl font-bold mb-4">Configuració del Teleprompter</h1>
@@ -196,19 +200,20 @@
             <textarea id="text-input" placeholder="Introduïu aquí el guió..."></textarea>
             
             <div class="mt-4 flex flex-wrap gap-4 items-center">
-                <span class="text-gray-400 font-semibold text-sm">Color del text:</span>
-                <button onclick="changeTextColor('#ffffff')" data-color="#ffffff" class="color-btn w-6 h-6 rounded-full bg-white transition-all" title="Blanc"></button>
-                <button onclick="changeTextColor('#ffde00')" data-color="#ffde00" class="color-btn w-6 h-6 rounded-full bg-[#ffde00] transition-all" title="Groc"></button>
-                <button onclick="changeTextColor('#00ff00')" data-color="#00ff00" class="color-btn w-6 h-6 rounded-full bg-[#00ff00] transition-all" title="Verd"></button>
-                
-                <div class="hidden sm:block w-px h-6 bg-gray-700 mx-2"></div>
-
+                <div class="flex flex-col mr-auto">
+                    <span class="text-xs text-gray-400 font-bold mb-1">Color del text:</span>
+                    <div class="flex gap-2">
+                        <button onclick="changeTextColor('#ffffff')" id="btn-color-white" class="color-btn bg-white active" title="Blanc"></button>
+                        <button onclick="changeTextColor('#ffde00')" id="btn-color-yellow" class="color-btn bg-[#ffde00]" title="Groc d'alt contrast"></button>
+                        <button onclick="changeTextColor('#00ff00')" id="btn-color-green" class="color-btn bg-[#00ff00]" title="Verd fòsfor"></button>
+                    </div>
+                </div>
                 <label class="bg-blue-600 px-4 py-2 rounded cursor-pointer hover:bg-blue-700 text-sm font-semibold">
                     Pujar fitxer .txt
                     <input type="file" id="file-upload" accept=".txt" class="hidden">
                 </label>
-                <button onclick="startPrompter()" class="bg-green-600 px-6 py-2 rounded font-bold hover:bg-green-700 ml-auto">
-                    Inicia el teleprompter
+                <button onclick="startPrompter()" class="bg-green-600 px-8 py-2 rounded font-bold hover:bg-green-700">
+                    Inicia
                 </button>
             </div>
 
@@ -221,9 +226,11 @@
                         <p class="mb-1">• <strong>Espai / Clic roda:</strong> Pausa o reprèn</p>
                         <p class="mb-1">• <strong>Fletxa dreta/esquerra o Roda:</strong> Ajustar velocitat</p>
                         <p class="mb-1">• <strong>Fletxa amunt/avall o Repàg/Avàg:</strong> Avançar / Retrocedir manualment</p>
+                        <p class="mb-1">• <strong>N / M:</strong> Saltar al marcador anterior (N) o següent (M)</p>
                     </div>
                     <div>
                         <p class="mb-1">• <strong>Q / A:</strong> +/- Mida de la lletra</p>
+                        <p class="mb-1">• <strong>B:</strong> Obrir menú de marcadors</p>
                         <p class="mb-1">• <strong>Ctrl + R:</strong> Reiniciar i anar a l'inici</p>
                         <p class="mb-1">• <strong>Esc:</strong> Tancar qualsevol menú</p>
                     </div>
@@ -232,30 +239,41 @@
         </div>
     </div>
 
-    <!-- Modal Informació -->
     <div id="info-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h1 class="text-2xl font-bold mb-4">Com funciona?</h1>
-            <ul class="space-y-2 text-gray-300">
-                <li><strong>Autodesat:</strong> El text i la configuració es guarden automàticament perquè no perdis la feina si tanques la pestanya.</li>
-                <li><strong>Pantalla completa:</strong> Utilitzeu el botó flotant inferior dret per llegir de forma immersiva.</li>
-                <li><strong>Espai o Clic de la roda del ratolí:</strong> Pausa / Reprèn el moviment.</li>
-                <li><strong>Fletxes Dreta/Esquerra o Roda del ratolí:</strong> Augmenta (avall) / Redueix (amunt) la velocitat del desplaçament automàtic.</li>
-                <li><strong>Fletxes Amunt/Avall o tecles Repàg/Avàg:</strong> Avança o retrocedeix el text de manera manual.</li>
-                <li><strong>Q / A:</strong> Augmenta / Redueix la mida del text de manera proporcional.</li>
-                <li><strong>Ctrl + R:</strong> Reinicia el guió i us situa a la línia inicial en estat pausat.</li>
-                <li><strong>Botó Gir/Inversió:</strong> Canvia l'orientació visual en cicle (Normal, Mirall, Mirall + Girat, Girat).</li>
+            <ul class="space-y-2 text-gray-300 text-sm">
+                <li><strong>Autodesat:</strong> El text i els paràmetres es desen automàticament. No perdràs la feina si tanques la pestanya.</li>
+                <li><strong>Marcadors de secció:</strong> Escriviu <code># Nom del marcador</code> a l'inici d'una línia per crear-lo. Premeu <strong>N</strong> (anterior) o <strong>M</strong> (següent) per saltar-hi durant la lectura.</li>
+                <li><strong>Pantalla completa:</strong> Utilitzeu el botó del menú inferior per llegir de forma immersiva.</li>
+                <li><strong>Espai o Clic roda:</strong> Pausa / Reprèn el moviment.</li>
+                <li><strong>Fletxes Dreta/Esquerra o Roda:</strong> Ajusta la velocitat del desplaçament automàtic.</li>
+                <li><strong>Fletxes Amunt/Avall o Repàg/Avàg:</strong> Avança o retrocedeix manualment.</li>
+                <li><strong>Q / A:</strong> Ajusta la mida del text proporcionalment.</li>
+                <li><strong>Ctrl + R:</strong> Reinicia el guió a la primera línia.</li>
             </ul>
-            <button onclick="toggleInfo()" class="mt-6 bg-gray-600 px-6 py-2 rounded font-bold w-full">Entès</button>
+            <button onclick="toggleInfo()" class="mt-6 bg-gray-600 px-6 py-2 rounded font-bold w-full hover:bg-gray-500">Entès</button>
         </div>
     </div>
 
-    <!-- Modal Notificació -->
+    <div id="bookmarks-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h1 class="text-2xl font-bold mb-4">Marcadors de Secció</h1>
+            <div id="bookmarks-list" class="flex flex-col gap-2 max-h-60 overflow-y-auto mb-4 pr-2">
+                <!-- Es generarà dinàmicament -->
+            </div>
+            <div class="text-sm text-gray-400 mb-6">
+                <p>Afegiu <strong># Nom de la secció</strong> a l'inici d'una línia del guió per crear marcadors. Premeu <strong>N</strong> (anterior) i <strong>M</strong> (següent) per saltar entre ells de forma ràpida durant la lectura.</p>
+            </div>
+            <button onclick="toggleBookmarksModal()" class="bg-gray-600 px-6 py-2 rounded font-bold w-full hover:bg-gray-500">Tanca</button>
+        </div>
+    </div>
+
     <div id="notification-modal" class="modal-overlay hidden">
         <div class="modal-content text-center">
             <h1 id="notif-title" class="text-2xl font-bold mb-4">Atenció</h1>
             <p id="notif-text" class="text-gray-300"></p>
-            <button onclick="hideNotification()" class="mt-6 bg-blue-600 px-8 py-2 rounded font-bold">D'acord</button>
+            <button onclick="hideNotification()" class="mt-6 bg-blue-600 px-8 py-2 rounded font-bold hover:bg-blue-500">D'acord</button>
         </div>
     </div>
 
@@ -264,6 +282,7 @@
         const configModal = document.getElementById('config-modal');
         const infoModal = document.getElementById('info-modal');
         const notifModal = document.getElementById('notification-modal');
+        const bookmarksModal = document.getElementById('bookmarks-modal');
         const textInput = document.getElementById('text-input');
         const fileUpload = document.getElementById('file-upload');
         const speedValDisplay = document.getElementById('speed-val');
@@ -273,9 +292,10 @@
         const timerDisplay = document.getElementById('timer');
         const progressBar = document.getElementById('progress-bar');
         const playPauseBtn = document.getElementById('btn-play-pause');
+        const bookmarksListContainer = document.getElementById('bookmarks-list');
         const autoHideElements = document.querySelectorAll('.auto-hide-ui');
 
-        let speed = 2; // Píxels per fotograma (aproximadament a 60fps)
+        let speed = 2;
         let fontSize = 5.0;
         let isPaused = true;
         let scrollY = 0;
@@ -284,69 +304,45 @@
         const jumpStep = 300;
         let flipState = 0;
         let textColor = '#ffffff';
+        let bookmarks = [];
 
-        // --- Autodesat (Local Storage) ---
         function saveSettings() {
-            const data = {
+            const settings = {
                 text: textInput.value,
                 speed: speed,
                 fontSize: fontSize,
                 flipState: flipState,
                 textColor: textColor
             };
-            localStorage.setItem('teleprompter_data', JSON.stringify(data));
+            localStorage.setItem('teleprompterSettings', JSON.stringify(settings));
         }
 
         function loadSettings() {
-            const saved = localStorage.getItem('teleprompter_data');
+            const saved = localStorage.getItem('teleprompterSettings');
             if (saved) {
                 try {
-                    const data = JSON.parse(saved);
-                    if (data.text !== undefined) textInput.value = data.text;
-                    if (data.speed !== undefined) speed = data.speed;
-                    if (data.fontSize !== undefined) fontSize = data.fontSize;
-                    if (data.flipState !== undefined) flipState = data.flipState;
-                    if (data.textColor !== undefined) textColor = data.textColor;
-                } catch (e) {
-                    console.error("Error carregant les dades", e);
-                }
+                    const settings = JSON.parse(saved);
+                    if (settings.text !== undefined) textInput.value = settings.text;
+                    if (settings.speed !== undefined) speed = settings.speed;
+                    if (settings.fontSize !== undefined) fontSize = settings.fontSize;
+                    if (settings.flipState !== undefined) flipState = settings.flipState;
+                    if (settings.textColor !== undefined) textColor = settings.textColor;
+                } catch(e) { console.error("Error carregant paràmetres", e); }
             }
-            
-            scrollContent.style.color = textColor;
-            updateColorUI();
-            updateFontSize();
-            updateTransform();
-            updateStatusUI();
+            changeTextColor(textColor, false);
         }
 
-        // Esdeveniment d'autodesat per text
+        // Desar canvis de text automàticament mentre l'usuari escriu
         textInput.addEventListener('input', saveSettings);
 
-        // --- Colors ---
-        function changeTextColor(color) {
-            textColor = color;
-            scrollContent.style.color = color;
-            updateColorUI();
-            saveSettings();
-        }
-
-        function updateColorUI() {
-            document.querySelectorAll('.color-btn').forEach(btn => {
-                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-gray-900', 'ring-white');
-                if (btn.dataset.color === textColor) {
-                    btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-gray-900', 'ring-white');
-                }
-            });
-        }
-
-        // --- Controls autocultables (Auto-hide UI) ---
         function resetAutoHideTimeout() {
             autoHideElements.forEach(el => el.classList.remove('opacity-0', 'pointer-events-none'));
             clearTimeout(controlsTimeout);
             
             const isAnyModalOpen = !configModal.classList.contains('hidden') || 
                                    !infoModal.classList.contains('hidden') || 
-                                   !notifModal.classList.contains('hidden');
+                                   !notifModal.classList.contains('hidden') ||
+                                   !bookmarksModal.classList.contains('hidden');
             
             if (!isPaused && !isAnyModalOpen) {
                 controlsTimeout = setTimeout(() => {
@@ -356,20 +352,16 @@
         }
         window.addEventListener('mousemove', resetAutoHideTimeout);
 
-        // --- Pantalla completa ---
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
+                document.documentElement.requestFullscreen().catch(() => {
                     showNotification("Error", "No s'ha pogut activar la pantalla completa.");
                 });
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
+                if (document.exitFullscreen) document.exitFullscreen();
             }
         }
 
-        // --- Funcions de control auxiliar ---
         function togglePlayPause() {
             isPaused = !isPaused;
             updateStatusUI();
@@ -377,7 +369,7 @@
         }
 
         function changeSpeed(delta) {
-            speed = Math.max(0.5, Math.min(25, speed + delta));
+            speed = Math.max(0.1, Math.min(25, speed + delta));
             updateStatusUI();
             updateTimer();
             saveSettings();
@@ -389,15 +381,104 @@
             saveSettings();
         }
 
-        // Gestió de la roda del ratolí per ajustar la velocitat
+        function changeTextColor(colorHex, shouldSave = true) {
+            textColor = colorHex;
+            scrollContent.style.color = textColor;
+            
+            // Si el text principal és groc, marquem les seccions en verd. Altrament en groc.
+            const bookmarkColor = textColor === '#ffde00' ? '#00ff00' : '#ffde00';
+            document.querySelectorAll('.bookmark').forEach(el => {
+                el.style.color = bookmarkColor;
+            });
+            
+            // Actualitzar estat dels botons de color
+            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+            if (colorHex === '#ffffff') document.getElementById('btn-color-white').classList.add('active');
+            else if (colorHex === '#ffde00') document.getElementById('btn-color-yellow').classList.add('active');
+            else if (colorHex === '#00ff00') document.getElementById('btn-color-green').classList.add('active');
+            
+            if (shouldSave) saveSettings();
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag] || tag));
+        }
+
+        function updateBookmarksUI() {
+            if (bookmarks.length === 0) {
+                bookmarksListContainer.innerHTML = '<p class="text-gray-500 italic">No s\'ha detectat cap marcador en aquest guió.</p>';
+                return;
+            }
+            bookmarksListContainer.innerHTML = '';
+            bookmarks.forEach((b, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'text-left bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded text-white font-semibold transition-colors';
+                btn.innerText = b.getAttribute('data-title');
+                btn.onclick = () => {
+                    jumpToBookmark(index);
+                    toggleBookmarksModal();
+                };
+                bookmarksListContainer.appendChild(btn);
+            });
+        }
+
+        function toggleBookmarksModal() {
+            bookmarksModal.classList.toggle('hidden');
+            if (!bookmarksModal.classList.contains('hidden')) { 
+                isPaused = true; 
+                updateStatusUI(); 
+            }
+            resetAutoHideTimeout();
+        }
+
+        function jumpToBookmark(index) {
+            if (index < 0 || index >= bookmarks.length) return;
+            const span = bookmarks[index];
+            const guideCenter = window.innerHeight * 0.5;
+            const targetOffset = span.offsetTop - guideCenter;
+            scrollY = targetOffset * getDirection();
+            
+            updateTransform();
+            updateTimer();
+        }
+
+        function jumpToNextBookmark(direction) {
+            if (bookmarks.length === 0) return;
+            
+            const guideCenter = window.innerHeight * 0.5;
+            // Absolutitzem la posició actual i afegim un petit marge d'error
+            const currentOffset = Math.abs(scrollY) + guideCenter; 
+            let targetIndex = -1;
+            
+            if (direction === 1) { // Endavant (M)
+                targetIndex = bookmarks.findIndex(b => b.offsetTop > currentOffset + 10);
+                if (targetIndex === -1) targetIndex = bookmarks.length - 1; // Últim
+            } else { // Enrere (N)
+                for (let i = bookmarks.length - 1; i >= 0; i--) {
+                    if (bookmarks[i].offsetTop < currentOffset - 10) {
+                        targetIndex = i;
+                        break;
+                    }
+                }
+                if (targetIndex === -1) targetIndex = 0; // Primer
+            }
+            
+            if (targetIndex !== -1) {
+                jumpToBookmark(targetIndex);
+            }
+        }
+
         window.addEventListener('wheel', (e) => {
+            if (!configModal.classList.contains('hidden')) return; // No fer res si el config està obert
             e.preventDefault();
-            changeSpeed(e.deltaY > 0 ? 0.5 : -0.5);
+            if (e.deltaY > 0) changeSpeed(0.5);
+            else changeSpeed(-0.5);
         }, { passive: false });
 
-        // Gestió de clic de roda (clic central) per pausar o continuar
         window.addEventListener('mousedown', (e) => {
-            if (e.button === 1) { 
+            if (e.button === 1) { // Clic central
                 e.preventDefault();
                 togglePlayPause();
             }
@@ -405,15 +486,17 @@
 
         function updateTimer() {
             const actualTextHeight = Math.max(0, scrollContent.offsetHeight - window.innerHeight);
-            const distanceRemaining = Math.max(0, actualTextHeight - Math.abs(scrollY));
             
+            // Progrés
             let progress = 0;
             if (actualTextHeight > 0) {
                 progress = (Math.abs(scrollY) / actualTextHeight) * 100;
                 progress = Math.min(100, Math.max(0, progress));
             }
             progressBar.style.width = `${progress}%`;
-            
+
+            // Temps
+            const distanceRemaining = Math.max(0, actualTextHeight - Math.abs(scrollY));
             const pixelsPerSecond = speed * 60;
             const secondsRemaining = Math.max(0, distanceRemaining / pixelsPerSecond);
             
@@ -422,9 +505,7 @@
             const seconds = Math.floor(secondsRemaining % 60);
             
             let timeStr = "";
-            if (hours > 0) {
-                timeStr += `${hours.toString().padStart(2, '0')}:`;
-            }
+            if (hours > 0) timeStr += `${hours.toString().padStart(2, '0')}:`;
             timeStr += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
             timerDisplay.innerText = timeStr;
@@ -448,9 +529,7 @@
 
         function toggleFlip() {
             flipState = (flipState + 1) % 4;
-            if (flipState === 2 || flipState === 0) {
-                scrollY = -scrollY;
-            }
+            if (flipState === 2 || flipState === 0) scrollY = -scrollY;
             updateTransform();
             updateStatusUI();
             saveSettings();
@@ -494,6 +573,7 @@
         }
 
         window.addEventListener('keydown', (e) => {
+            // Reinici (Ctrl + R)
             if ((e.key.toLowerCase() === 'r' || e.code === 'KeyR') && e.ctrlKey) {
                 e.preventDefault();
                 scrollY = 0;
@@ -504,13 +584,20 @@
                 return;
             }
 
+            // Pausa/Play (Espai) només si no estem escrivint al textarea
             if (e.code === 'Space') {
-                e.preventDefault();
-                togglePlayPause();
+                if (document.activeElement !== textInput) {
+                    e.preventDefault();
+                    togglePlayPause();
+                }
                 return;
             }
 
-            if (document.activeElement === textInput) { if (e.key === "Escape") textInput.blur(); return; }
+            // Desenfocar el textarea si premem Escape
+            if (document.activeElement === textInput) { 
+                if (e.key === "Escape") textInput.blur(); 
+                return; 
+            }
             
             const key = e.key.toLowerCase();
             const dir = getDirection();
@@ -530,16 +617,21 @@
                     break;
                 case "q": changeFontSize(0.2); break;
                 case "a": changeFontSize(-0.2); break;
+                case "m": jumpToNextBookmark(1); break; // Següent
+                case "n": jumpToNextBookmark(-1); break; // Anterior
+                case "b": toggleBookmarksModal(); break;
                 case "escape": 
                     configModal.classList.add('hidden'); 
                     infoModal.classList.add('hidden');
                     notifModal.classList.add('hidden');
+                    bookmarksModal.classList.add('hidden');
                     resetAutoHideTimeout();
                     break;
             }
 
+            // Limitar el desplaçament manual
             if (key === "arrowup" || key === "arrowdown" || key === "pageup" || key === "pagedown") {
-                e.preventDefault(); 
+                e.preventDefault();
                 if (dir === -1) {
                     scrollY = Math.max(-actualTextHeight, Math.min(0, nextScroll));
                 } else {
@@ -547,9 +639,7 @@
                 }
                 updateTransform();
             }
-
-            updateStatusUI();
-            updateTimer();
+            
             resetAutoHideTimeout();
         });
 
@@ -559,7 +649,7 @@
             const reader = new FileReader();
             reader.onload = function(e) { 
                 textInput.value = e.target.result; 
-                saveSettings();
+                saveSettings(); // Desem a localStorage
             };
             reader.readAsText(file);
         });
@@ -574,14 +664,36 @@
         }
 
         function startPrompter() {
-            const text = textInput.value.trim();
-            if (text === "") { showNotification("Atenció", "Si us plau, introduïu algun guió de text."); return; }
-            scrollContent.innerText = text;
+            const rawText = textInput.value.trim();
+            if (rawText === "") { showNotification("Atenció", "Si us plau, introduïu algun guió de text."); return; }
+            
+            saveSettings(); // Ens assegurem de desar abans d'iniciar
+
+            // Generar HTML i parsejar marcadors
+            const lines = rawText.split('\n');
+            let htmlContent = '';
+            
+            const bookmarkColor = textColor === '#ffde00' ? '#00ff00' : '#ffde00';
+            
+            lines.forEach(line => {
+                const match = line.match(/^#\s+(.+)$/);
+                if (match) {
+                    htmlContent += `<span class="bookmark font-bold" style="color: ${bookmarkColor};" data-title="${escapeHTML(match[1])}">${escapeHTML(line)}</span>\n`;
+                } else {
+                    htmlContent += `${escapeHTML(line)}\n`;
+                }
+            });
+
+            scrollContent.innerHTML = htmlContent;
+            
+            // Recollir marcadors i actualitzar modal
+            bookmarks = Array.from(scrollContent.querySelectorAll('.bookmark'));
+            updateBookmarksUI();
+            
             scrollY = 0;
+            isPaused = true; 
             updateTransform();
             updateFontSize();
-            
-            isPaused = true; 
             
             toggleModal();
             updateStatusUI(); 
@@ -607,9 +719,9 @@
             }
         }
         
-        // Inicialització
+        // --- Inici d'Aplicació ---
         loadSettings();
-
+        updateStatusUI();
     </script>
 </body>
 </html>
