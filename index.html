@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teleprompter Professional</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
         body {
             background-color: #000;
@@ -30,11 +31,27 @@
             line-height: 1.4;
             text-align: center;
             white-space: pre-wrap;
-            transition: transform 0.05s linear, font-size 0.2s ease, color 0.3s ease;
+            position: relative;
+            transition: transform 0.05s linear, color 0.3s ease;
             transform-origin: 50vw 50vh;
             display: inline-block;
             width: 100%;
         }
+
+        #scroll-content p { margin-bottom: 0.8em; margin-top: 0; }
+        #scroll-content b, #scroll-content strong { font-weight: bold; }
+        #scroll-content i, #scroll-content em { font-style: italic; }
+        #scroll-content ul, #scroll-content ol {
+            text-align: left;
+            display: inline-block;
+            margin-bottom: 0.8em;
+            padding-left: 1.5em;
+            width: auto;
+            max-width: 100%;
+        }
+        #scroll-content ul { list-style-type: disc; }
+        #scroll-content ol { list-style-type: decimal; }
+        #scroll-content li { margin-bottom: 0.3em; }
 
         #reading-guide {
             position: fixed;
@@ -117,16 +134,24 @@
 
         .hidden { display: none !important; }
 
-        textarea {
+        #text-input {
             background: #222;
             color: #fff;
             border: 1px solid #444;
             width: 100%;
-            height: 200px;
+            height: 250px;
             padding: 1rem;
             border-radius: 0.5rem;
-            resize: none;
+            overflow-y: auto;
             font-size: 1rem;
+            outline: none;
+            text-align: left;
+        }
+        
+        #text-input:empty:before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+            pointer-events: none;
         }
 
         button { transition: all 0.2s; }
@@ -205,7 +230,8 @@
         <div class="modal-content">
             <h1 class="text-2xl font-bold mb-4">Configuració del Teleprompter</h1>
             <p class="mb-2 text-gray-400">Escriviu el text o pugeu un fitxer:</p>
-            <textarea id="text-input" placeholder="Introduïu aquí el guió..."></textarea>
+            
+            <div id="text-input" contenteditable="true" data-placeholder="Introduïu aquí el guió o pugeu un fitxer .txt o .docx..."></div>
             
             <div class="mt-4 flex flex-wrap gap-4 items-center">
                 <div class="flex flex-col mr-auto">
@@ -217,8 +243,8 @@
                     </div>
                 </div>
                 <label class="bg-blue-600 px-4 py-2 rounded cursor-pointer hover:bg-blue-700 text-sm font-semibold">
-                    Pujar fitxer .txt
-                    <input type="file" id="file-upload" accept=".txt" class="hidden">
+                    Pujar fitxer .txt o .docx
+                    <input type="file" id="file-upload" accept=".txt,.docx" class="hidden">
                 </label>
                 <button onclick="startPrompter()" class="bg-green-600 px-8 py-2 rounded font-bold hover:bg-green-700">
                     Inicia
@@ -251,15 +277,16 @@
         <div class="modal-content">
             <h1 class="text-2xl font-bold mb-4">Com funciona?</h1>
             <ul class="space-y-2 text-gray-300 text-sm">
-                <li><strong>Autodesat:</strong> El text i els paràmetres es desen automàticament. No perdràs la feina si tanques la pestanya.</li>
+                <li><strong>Documents de text i Word:</strong> L'aplicació respecta negretes, cursives, i llistes dels vostres fitxers .docx.</li>
+                <li><strong>Autodesat:</strong> El text i els paràmetres es desen automàticament a la memòria. No perdreu la feina si tanqueu la pestanya.</li>
                 <li><strong>Marcadors de secció:</strong> Escriviu <code># Nom del marcador</code> a l'inici d'una línia per crear-lo. Premeu <strong>N</strong> (anterior) o <strong>M</strong> (següent) per saltar-hi durant la lectura.</li>
                 <li><strong>Pantalla completa:</strong> Utilitzeu el botó del menú inferior per llegir de forma immersiva.</li>
                 <li><strong>Controls Tàctils:</strong> Un toc per pausar/reprendre. Doble toc inferior (dreta/esquerra) per ajustar la velocitat. Doble toc superior per la mida de lletra. Arrossegueu per moure el text amunt o avall.</li>
-                <li><strong>Espai o Clic roda:</strong> Pausa / Reprèn el moviment.</li>
-                <li><strong>Fletxes Dreta/Esquerra o Roda:</strong> Ajusta la velocitat del desplaçament automàtic.</li>
-                <li><strong>Fletxes Amunt/Avall o Repàg/Avàg:</strong> Avança o retrocedeix manualment.</li>
-                <li><strong>Q / A:</strong> Ajusta la mida del text proporcionalment.</li>
-                <li><strong>Ctrl + R:</strong> Reinicia el guió a la primera línia.</li>
+                <li><strong>Espai o Clic roda:</strong> Pausa / Reprèn el moviment de lectura automàtica.</li>
+                <li><strong>Fletxes Dreta/Esquerra o Roda:</strong> Ajusteu la velocitat del desplaçament automàtic.</li>
+                <li><strong>Fletxes Amunt/Avall o Repàg/Avàg:</strong> Avanceu o retrocediu manualment.</li>
+                <li><strong>Q / A:</strong> Ajusteu la mida del text de manera proporcional mantenint la posició de lectura.</li>
+                <li><strong>Ctrl + R:</strong> Reinicieu el guió per tornar a la primera línia ràpidament.</li>
             </ul>
             <button onclick="toggleInfo()" class="mt-6 bg-gray-600 px-6 py-2 rounded font-bold w-full hover:bg-gray-500">Entès</button>
         </div>
@@ -317,7 +344,7 @@
 
         function saveSettings() {
             const settings = {
-                text: textInput.value,
+                textHTML: textInput.innerHTML,
                 speed: speed,
                 fontSize: fontSize,
                 flipState: flipState,
@@ -331,7 +358,11 @@
             if (saved) {
                 try {
                     const settings = JSON.parse(saved);
-                    if (settings.text !== undefined) textInput.value = settings.text;
+                    if (settings.textHTML !== undefined) {
+                        textInput.innerHTML = settings.textHTML;
+                    } else if (settings.text !== undefined) {
+                        textInput.innerHTML = settings.text.split('\n').map(line => `<p>${escapeHTML(line)}</p>`).join('');
+                    }
                     if (settings.speed !== undefined) speed = settings.speed;
                     if (settings.fontSize !== undefined) fontSize = settings.fontSize;
                     if (settings.flipState !== undefined) flipState = settings.flipState;
@@ -341,7 +372,6 @@
             changeTextColor(textColor, false);
         }
 
-        // Desar canvis de text automàticament mentre l'usuari escriu
         textInput.addEventListener('input', saveSettings);
 
         function resetAutoHideTimeout() {
@@ -384,9 +414,63 @@
             saveSettings();
         }
 
+        function updateFontSize() {
+            scrollContent.style.fontSize = `${fontSize}rem`;
+            fontValDisplay.innerText = fontSize.toFixed(1);
+            setTimeout(updateTimer, 50); 
+        }
+
         function changeFontSize(delta) {
+            const oldTextHeight = Math.max(1, scrollContent.offsetHeight - window.innerHeight);
+            const oldScrollY = scrollY;
+            
+            const centerY = window.innerHeight / 2;
+            const targetLocalY = centerY - scrollY; 
+            
+            let targetEl = null;
+            let targetRatio = 0.5;
+            const children = Array.from(scrollContent.children);
+            
+            if (children.length > 0) {
+                let minDistance = Infinity;
+                for (let i = 0; i < children.length; i++) {
+                    const el = children[i];
+                    if (el.offsetHeight === 0) continue; 
+                    
+                    const top = el.offsetTop;
+                    const bottom = top + el.offsetHeight;
+                    
+                    if (top <= targetLocalY && bottom >= targetLocalY) {
+                        targetEl = el;
+                        targetRatio = (targetLocalY - top) / el.offsetHeight;
+                        break;
+                    }
+                    
+                    const elCenter = top + (el.offsetHeight / 2);
+                    const dist = Math.abs(elCenter - targetLocalY);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        targetEl = el;
+                        targetRatio = (targetLocalY - top) / el.offsetHeight;
+                    }
+                }
+            }
+
             fontSize = Math.max(1, Math.min(15, fontSize + delta));
             updateFontSize();
+            
+            const newTextHeight = Math.max(1, scrollContent.offsetHeight - window.innerHeight);
+            
+            if (targetEl) {
+                const newTop = targetEl.offsetTop;
+                const newHeight = targetEl.offsetHeight;
+                const newTargetLocalY = newTop + (newHeight * targetRatio);
+                scrollY = centerY - newTargetLocalY;
+            } else {
+                scrollY = oldScrollY * (newTextHeight / oldTextHeight); 
+            }
+            
+            updateTransform();
             saveSettings();
         }
 
@@ -394,13 +478,11 @@
             textColor = colorHex;
             scrollContent.style.color = textColor;
             
-            // Si el text principal és groc, marquem les seccions en verd. Altrament en groc.
             const bookmarkColor = textColor === '#ffde00' ? '#00ff00' : '#ffde00';
             document.querySelectorAll('.bookmark').forEach(el => {
                 el.style.color = bookmarkColor;
             });
             
-            // Actualitzar estat dels botons de color
             document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
             if (colorHex === '#ffffff') document.getElementById('btn-color-white').classList.add('active');
             else if (colorHex === '#ffde00') document.getElementById('btn-color-yellow').classList.add('active');
@@ -457,21 +539,20 @@
             if (bookmarks.length === 0) return;
             
             const guideCenter = window.innerHeight * 0.5;
-            // Absolutitzem la posició actual i afegim un petit marge d'error
             const currentOffset = Math.abs(scrollY) + guideCenter; 
             let targetIndex = -1;
             
-            if (direction === 1) { // Endavant (M)
+            if (direction === 1) { 
                 targetIndex = bookmarks.findIndex(b => b.offsetTop > currentOffset + 10);
-                if (targetIndex === -1) targetIndex = bookmarks.length - 1; // Últim
-            } else { // Enrere (N)
+                if (targetIndex === -1) targetIndex = bookmarks.length - 1; 
+            } else { 
                 for (let i = bookmarks.length - 1; i >= 0; i--) {
                     if (bookmarks[i].offsetTop < currentOffset - 10) {
                         targetIndex = i;
                         break;
                     }
                 }
-                if (targetIndex === -1) targetIndex = 0; // Primer
+                if (targetIndex === -1) targetIndex = 0; 
             }
             
             if (targetIndex !== -1) {
@@ -480,14 +561,14 @@
         }
 
         window.addEventListener('wheel', (e) => {
-            if (!configModal.classList.contains('hidden')) return; // No fer res si el config està obert
+            if (!configModal.classList.contains('hidden')) return; 
             e.preventDefault();
             if (e.deltaY > 0) changeSpeed(0.5);
             else changeSpeed(-0.5);
         }, { passive: false });
 
         window.addEventListener('mousedown', (e) => {
-            if (e.button === 1) { // Clic central
+            if (e.button === 1) { 
                 e.preventDefault();
                 togglePlayPause();
             }
@@ -496,7 +577,6 @@
         function updateTimer() {
             const actualTextHeight = Math.max(0, scrollContent.offsetHeight - window.innerHeight);
             
-            // Progrés
             let progress = 0;
             if (actualTextHeight > 0) {
                 progress = (Math.abs(scrollY) / actualTextHeight) * 100;
@@ -504,7 +584,6 @@
             }
             progressBar.style.width = `${progress}%`;
 
-            // Temps
             const distanceRemaining = Math.max(0, actualTextHeight - Math.abs(scrollY));
             const pixelsPerSecond = speed * 60;
             const secondsRemaining = Math.max(0, distanceRemaining / pixelsPerSecond);
@@ -582,7 +661,6 @@
         }
 
         window.addEventListener('keydown', (e) => {
-            // Reinici (Ctrl + R)
             if ((e.key.toLowerCase() === 'r' || e.code === 'KeyR') && e.ctrlKey) {
                 e.preventDefault();
                 scrollY = 0;
@@ -593,7 +671,6 @@
                 return;
             }
 
-            // Pausa/Play (Espai) només si no estem escrivint al textarea
             if (e.code === 'Space') {
                 if (document.activeElement !== textInput) {
                     e.preventDefault();
@@ -602,7 +679,6 @@
                 return;
             }
 
-            // Desenfocar el textarea si premem Escape
             if (document.activeElement === textInput) { 
                 if (e.key === "Escape") textInput.blur(); 
                 return; 
@@ -626,8 +702,8 @@
                     break;
                 case "q": changeFontSize(0.2); break;
                 case "a": changeFontSize(-0.2); break;
-                case "m": jumpToNextBookmark(1); break; // Següent
-                case "n": jumpToNextBookmark(-1); break; // Anterior
+                case "m": jumpToNextBookmark(1); break; 
+                case "n": jumpToNextBookmark(-1); break; 
                 case "b": toggleBookmarksModal(); break;
                 case "escape": 
                     configModal.classList.add('hidden'); 
@@ -638,7 +714,6 @@
                     break;
             }
 
-            // Limitar el desplaçament manual
             if (key === "arrowup" || key === "arrowdown" || key === "pageup" || key === "pagedown") {
                 e.preventDefault();
                 if (dir === -1) {
@@ -655,12 +730,32 @@
         fileUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) { 
-                textInput.value = e.target.result; 
-                saveSettings(); // Desem a localStorage
-            };
-            reader.readAsText(file);
+
+            if (file.name.toLowerCase().endsWith('.docx')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const arrayBuffer = event.target.result;
+                    mammoth.convertToHtml({arrayBuffer: arrayBuffer})
+                        .then(function(result) {
+                            textInput.innerHTML = result.value; 
+                            saveSettings();
+                        })
+                        .catch(function(err) {
+                            showNotification("Error", "No s'ha pogut llegir el document .docx correctament.");
+                            console.error(err);
+                        });
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = function(event) { 
+                    const html = event.target.result.split('\n').map(line => `<p>${escapeHTML(line)}</p>`).join('');
+                    textInput.innerHTML = html; 
+                    saveSettings(); 
+                };
+                reader.readAsText(file);
+            }
+            fileUpload.value = '';
         });
 
         function toggleModal() {
@@ -673,29 +768,18 @@
         }
 
         function startPrompter() {
-            const rawText = textInput.value.trim();
-            if (rawText === "") { showNotification("Atenció", "Si us plau, introduïu algun guió de text."); return; }
+            const rawHTML = textInput.innerHTML.trim();
+            if (rawHTML === "" || rawHTML === "<br>") { showNotification("Atenció", "Si us plau, introduïu algun guió de text."); return; }
             
-            saveSettings(); // Ens assegurem de desar abans d'iniciar
+            saveSettings();
 
-            // Generar HTML i parsejar marcadors
-            const lines = rawText.split('\n');
-            let htmlContent = '';
-            
             const bookmarkColor = textColor === '#ffde00' ? '#00ff00' : '#ffde00';
-            
-            lines.forEach(line => {
-                const match = line.match(/^#\s+(.+)$/);
-                if (match) {
-                    htmlContent += `<span class="bookmark font-bold" style="color: ${bookmarkColor};" data-title="${escapeHTML(match[1])}">${escapeHTML(line)}</span>\n`;
-                } else {
-                    htmlContent += `${escapeHTML(line)}\n`;
-                }
+            const processedHTML = rawHTML.replace(/(>|^|\n)\s*#\s+([^<]+)/gi, function(match, prefix, title) {
+                return `${prefix}<span class="bookmark font-bold" style="color: ${bookmarkColor};" data-title="${title.trim()}"># ${title.trim()}</span>`;
             });
 
-            scrollContent.innerHTML = htmlContent;
+            scrollContent.innerHTML = processedHTML;
             
-            // Recollir marcadors i actualitzar modal
             bookmarks = Array.from(scrollContent.querySelectorAll('.bookmark'));
             updateBookmarksUI();
             
@@ -707,12 +791,6 @@
             toggleModal();
             updateStatusUI(); 
             if (!animationId) animationId = requestAnimationFrame(animate);
-        }
-
-        function updateFontSize() {
-            scrollContent.style.fontSize = `${fontSize}rem`;
-            fontValDisplay.innerText = fontSize.toFixed(1);
-            setTimeout(updateTimer, 50); 
         }
 
         function updateStatusUI() {
@@ -727,7 +805,7 @@
                     : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
             }
         }
-        
+
         // --- Controls Tàctils ---
         let touchStartX = 0, touchStartY = 0;
         let lastTouchY = 0;
@@ -741,7 +819,7 @@
                                    !notifModal.classList.contains('hidden') ||
                                    !bookmarksModal.classList.contains('hidden');
             if (isAnyModalOpen) return;
-            if (e.target.closest('button')) return; // Evita interferir amb els botons
+            if (e.target.closest('button')) return; 
 
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
@@ -760,14 +838,13 @@
             const currentY = e.touches[0].clientY;
             const deltaY = currentY - lastTouchY;
             
-            // Detecta si s'està arrossegant i no és només un toc imprecís
             if (Math.abs(currentY - touchStartY) > 10) {
                 isDragging = true;
-                e.preventDefault(); // Evita l'scroll natiu del navegador
+                e.preventDefault(); 
                 
                 const actualTextHeight = Math.max(0, scrollContent.offsetHeight - window.innerHeight);
                 const dir = getDirection();
-                // Calcula el nou desplaçament respectant la direcció del gir (flip)
+                
                 let nextScroll = scrollY + (dir === -1 ? deltaY : -deltaY);
                 
                 if (dir === -1) {
@@ -788,14 +865,13 @@
             if (isAnyModalOpen) return;
             if (e.target.closest('button')) return;
 
-            if (isDragging) return; // Si s'ha arrossegat, no s'ha d'activar el toc (tap)
+            if (isDragging) return; 
 
             const currentTime = new Date().getTime();
             const tapLength = currentTime - lastTapTime;
             const clientX = e.changedTouches[0].clientX;
             const clientY = e.changedTouches[0].clientY;
 
-            // Detecció de doble toc (menys de 300ms entre tocs)
             if (tapLength < 300 && tapLength > 0) {
                 clearTimeout(tapTimeout);
                 
@@ -803,16 +879,15 @@
                 const isBottom = clientY > window.innerHeight / 2;
 
                 if (isRight && isBottom) {
-                    changeSpeed(0.5); // Doble toc inferior dret
+                    changeSpeed(0.5); 
                 } else if (!isRight && isBottom) {
-                    changeSpeed(-0.5); // Doble toc inferior esquerre
+                    changeSpeed(-0.5); 
                 } else if (isRight && !isBottom) {
-                    changeFontSize(0.2); // Doble toc superior dret
+                    changeFontSize(0.2); 
                 } else if (!isRight && !isBottom) {
-                    changeFontSize(-0.2); // Doble toc superior esquerre
+                    changeFontSize(-0.2);
                 }
             } else {
-                // Toc senzill amb un petit retard per descartar que no sigui un doble toc
                 tapTimeout = setTimeout(() => {
                     togglePlayPause();
                 }, 300);
@@ -820,7 +895,6 @@
             lastTapTime = currentTime;
         });
 
-        // --- Inici d'Aplicació ---
         loadSettings();
         updateStatusUI();
     </script>
