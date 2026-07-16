@@ -228,16 +228,16 @@
             <hr class="my-6 border-gray-700">
             
             <div class="text-sm text-gray-400">
-                <h2 class="font-bold text-white mb-2 underline">Dreceres de teclat i ratolí:</h2>
+                <h2 class="font-bold text-white mb-2 underline">Dreceres (Teclat, Ratolí i Tàctils):</h2>
                 <div class="grid grid-cols-2 gap-4 text-xs">
                     <div>
-                        <p class="mb-1">• <strong>Espai / Clic roda:</strong> Pausa o reprèn</p>
-                        <p class="mb-1">• <strong>Fletxa dreta/esquerra o Roda:</strong> Ajustar velocitat</p>
-                        <p class="mb-1">• <strong>Fletxa amunt/avall o Repàg/Avàg:</strong> Avançar / Retrocedir manualment</p>
+                        <p class="mb-1">• <strong>Espai / Clic roda / Toc (Tap):</strong> Pausa o reprèn</p>
+                        <p class="mb-1">• <strong>Fletxes ↔ / Roda / Doble toc (Abaix Dreta/Esq):</strong> Ajustar velocitat</p>
+                        <p class="mb-1">• <strong>Fletxes ↕ / Repàg/Avàg / Arrossegar:</strong> Desplaçar manualment</p>
                         <p class="mb-1">• <strong>N / M:</strong> Saltar al marcador anterior (N) o següent (M)</p>
                     </div>
                     <div>
-                        <p class="mb-1">• <strong>Q / A:</strong> +/- Mida de la lletra</p>
+                        <p class="mb-1">• <strong>Q / A o Doble toc (Dalt Dreta/Esq):</strong> +/- Mida de la lletra</p>
                         <p class="mb-1">• <strong>B:</strong> Obrir menú de marcadors</p>
                         <p class="mb-1">• <strong>Ctrl + R:</strong> Reiniciar i anar a l'inici</p>
                         <p class="mb-1">• <strong>Esc:</strong> Tancar qualsevol menú</p>
@@ -254,6 +254,7 @@
                 <li><strong>Autodesat:</strong> El text i els paràmetres es desen automàticament. No perdràs la feina si tanques la pestanya.</li>
                 <li><strong>Marcadors de secció:</strong> Escriviu <code># Nom del marcador</code> a l'inici d'una línia per crear-lo. Premeu <strong>N</strong> (anterior) o <strong>M</strong> (següent) per saltar-hi durant la lectura.</li>
                 <li><strong>Pantalla completa:</strong> Utilitzeu el botó del menú inferior per llegir de forma immersiva.</li>
+                <li><strong>Controls Tàctils:</strong> Un toc per pausar/reprendre. Doble toc inferior (dreta/esquerra) per ajustar la velocitat. Doble toc superior per la mida de lletra. Arrossegueu per moure el text amunt o avall.</li>
                 <li><strong>Espai o Clic roda:</strong> Pausa / Reprèn el moviment.</li>
                 <li><strong>Fletxes Dreta/Esquerra o Roda:</strong> Ajusta la velocitat del desplaçament automàtic.</li>
                 <li><strong>Fletxes Amunt/Avall o Repàg/Avàg:</strong> Avança o retrocedeix manualment.</li>
@@ -727,6 +728,98 @@
             }
         }
         
+        // --- Controls Tàctils ---
+        let touchStartX = 0, touchStartY = 0;
+        let lastTouchY = 0;
+        let lastTapTime = 0;
+        let tapTimeout = null;
+        let isDragging = false;
+
+        window.addEventListener('touchstart', (e) => {
+            const isAnyModalOpen = !configModal.classList.contains('hidden') || 
+                                   !infoModal.classList.contains('hidden') || 
+                                   !notifModal.classList.contains('hidden') ||
+                                   !bookmarksModal.classList.contains('hidden');
+            if (isAnyModalOpen) return;
+            if (e.target.closest('button')) return; // Evita interferir amb els botons
+
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            lastTouchY = touchStartY;
+            isDragging = false;
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            const isAnyModalOpen = !configModal.classList.contains('hidden') || 
+                                   !infoModal.classList.contains('hidden') || 
+                                   !notifModal.classList.contains('hidden') ||
+                                   !bookmarksModal.classList.contains('hidden');
+            if (isAnyModalOpen) return;
+            if (e.target.closest('button')) return;
+
+            const currentY = e.touches[0].clientY;
+            const deltaY = currentY - lastTouchY;
+            
+            // Detecta si s'està arrossegant i no és només un toc imprecís
+            if (Math.abs(currentY - touchStartY) > 10) {
+                isDragging = true;
+                e.preventDefault(); // Evita l'scroll natiu del navegador
+                
+                const actualTextHeight = Math.max(0, scrollContent.offsetHeight - window.innerHeight);
+                const dir = getDirection();
+                // Calcula el nou desplaçament respectant la direcció del gir (flip)
+                let nextScroll = scrollY + (dir === -1 ? deltaY : -deltaY);
+                
+                if (dir === -1) {
+                    scrollY = Math.max(-actualTextHeight, Math.min(0, nextScroll));
+                } else {
+                    scrollY = Math.max(0, Math.min(actualTextHeight, nextScroll));
+                }
+                updateTransform();
+            }
+            lastTouchY = currentY;
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            const isAnyModalOpen = !configModal.classList.contains('hidden') || 
+                                   !infoModal.classList.contains('hidden') || 
+                                   !notifModal.classList.contains('hidden') ||
+                                   !bookmarksModal.classList.contains('hidden');
+            if (isAnyModalOpen) return;
+            if (e.target.closest('button')) return;
+
+            if (isDragging) return; // Si s'ha arrossegat, no s'ha d'activar el toc (tap)
+
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            const clientX = e.changedTouches[0].clientX;
+            const clientY = e.changedTouches[0].clientY;
+
+            // Detecció de doble toc (menys de 300ms entre tocs)
+            if (tapLength < 300 && tapLength > 0) {
+                clearTimeout(tapTimeout);
+                
+                const isRight = clientX > window.innerWidth / 2;
+                const isBottom = clientY > window.innerHeight / 2;
+
+                if (isRight && isBottom) {
+                    changeSpeed(0.5); // Doble toc inferior dret
+                } else if (!isRight && isBottom) {
+                    changeSpeed(-0.5); // Doble toc inferior esquerre
+                } else if (isRight && !isBottom) {
+                    changeFontSize(0.2); // Doble toc superior dret
+                } else if (!isRight && !isBottom) {
+                    changeFontSize(-0.2); // Doble toc superior esquerre
+                }
+            } else {
+                // Toc senzill amb un petit retard per descartar que no sigui un doble toc
+                tapTimeout = setTimeout(() => {
+                    togglePlayPause();
+                }, 300);
+            }
+            lastTapTime = currentTime;
+        });
+
         // --- Inici d'Aplicació ---
         loadSettings();
         updateStatusUI();
